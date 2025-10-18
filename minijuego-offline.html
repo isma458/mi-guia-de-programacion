@@ -4,159 +4,174 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Juego Educativo de Programación</title>
-<link rel="stylesheet" href="estilos.css">
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #000;
+    font-family: Arial, sans-serif;
+    color: white;
+    text-align: center;
+  }
+  canvas {
+    display: block;
+    margin: 0 auto;
+    background: black;
+  }
+</style>
 </head>
 <body>
-<div id="menu">
-  <h1>¡Bienvenido al Juego de Programación! 🚀</h1>
-  <button onclick="iniciarJuego()">Jugar</button>
-  <button onclick="mostrarPersonajes()">Seleccionar Personaje</button>
-  <div id="personajes" class="hidden">
-    <h2>Elige tu personaje:</h2>
-    <button onclick="elegirPersonaje('astro')">Astro</button>
-    <button onclick="elegirPersonaje('coder')">Coder</button>
-  </div>
-  <div id="info"></div>
-</div>
 
-<canvas id="gameCanvas" class="hidden" width="800" height="400"></canvas>
+<canvas id="gameCanvas" width="800" height="400"></canvas>
 
-<script src="juego.js"></script>
-</body>
-</html>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background-color: #111;
-  color: #fff;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  text-align: center;
-}
-
-button {
-  margin: 5px;
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.hidden {
-  display: none;
-}
-
-#gameCanvas {
-  border: 2px solid #fff;
-  background: url('fondos/galaxia.jpg') no-repeat center;
-  background-size: cover;
-  margin-top: 20px;
-}
-// Variables del juego
-const menu = document.getElementById('menu');
-const personajesDiv = document.getElementById('personajes');
-const info = document.getElementById('info');
+<script>
+// --- Variables principales ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+let gameState = 'menu'; // 'menu', 'seleccion', 'jugando'
 let personaje = localStorage.getItem('personaje') || 'astro';
 let nivel = parseInt(localStorage.getItem('nivel')) || 1;
+let puntaje = 0;
 
-// Posición jugador
-let player = { x: 50, y: 300, width: 50, height: 50, dy: 0 };
-let gravedad = 1;
-let saltando = false;
+// Jugador
+let player = { x: 50, y: 300, width: 50, height: 50, dy: 0, color: 'yellow', saltando: false };
 
 // Obstáculos
 let obstaculos = [];
 let velocidad = 3;
-let puntaje = 0;
 
-// Mostrar personajes
-function mostrarPersonajes() {
-  personajesDiv.classList.toggle('hidden');
+// Misiones diarias (ejemplo simple)
+let misiones = [`Nivel ${nivel}: Salta sobre 5 obstáculos`];
+let misionesCompletadas = 0;
+
+// --- Funciones ---
+function dibujarMenu() {
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = 'white';
+  ctx.font = '30px Arial';
+  ctx.fillText('Juego Educativo de Programación 🚀', 80, 100);
+  ctx.font = '20px Arial';
+  ctx.fillText('Presiona ENTER para empezar', 230, 200);
+  ctx.fillText(`Personaje actual: ${personaje}`, 280, 250);
 }
 
-// Elegir personaje
-function elegirPersonaje(p) {
-  personaje = p;
-  localStorage.setItem('personaje', personaje);
-  info.innerText = `Personaje elegido: ${personaje}`;
+function dibujarSeleccion() {
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = 'white';
+  ctx.font = '25px Arial';
+  ctx.fillText('Selecciona tu personaje:', 250, 100);
+  ctx.fillStyle = 'yellow';
+  ctx.fillRect(250, 150, 50, 50);
+  ctx.fillStyle = 'cyan';
+  ctx.fillRect(350, 150, 50, 50);
+  ctx.fillStyle = 'white';
+  ctx.font = '18px Arial';
+  ctx.fillText('Presiona A para Astro (amarillo) o C para Coder (cyan)', 150, 250);
 }
 
-// Iniciar juego
-function iniciarJuego() {
-  menu.classList.add('hidden');
-  canvas.classList.remove('hidden');
-  crearObstaculos();
-  requestAnimationFrame(gameLoop);
-}
-
-// Saltar
-document.addEventListener('keydown', (e) => {
-  if(e.code === 'Space' && !saltando){
-    player.dy = -15;
-    saltando = true;
-  }
-});
-
-// Crear obstáculos periódicamente
 function crearObstaculos() {
-  setInterval(() => {
-    obstaculos.push({ x: 800, y: 350, width: 30, height: 50 });
-  }, 2000);
+  obstaculos.push({ x: canvas.width, y: 350, width: 30, height: 50 });
 }
 
-// Game Loop
-function gameLoop() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+function dibujarJuego() {
+  // Fondo galaxia simple
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Estrellas
+  for (let i = 0; i < 50; i++) {
+    ctx.fillStyle = 'white';
+    ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2);
+  }
 
-  // Dibujar jugador
+  // Jugador
   ctx.fillStyle = personaje === 'astro' ? 'yellow' : 'cyan';
   ctx.fillRect(player.x, player.y, player.width, player.height);
 
-  // Física jugador
-  player.dy += gravedad;
-  player.y += player.dy;
-  if(player.y >= 300) {
-    player.y = 300;
-    player.dy = 0;
-    saltando = false;
-  }
-
-  // Dibujar obstáculos y colisiones
+  // Obstáculos
   ctx.fillStyle = 'red';
   obstaculos.forEach((obs, index) => {
     obs.x -= velocidad;
     ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
 
+    // Colisión
     if(player.x < obs.x + obs.width &&
        player.x + player.width > obs.x &&
        player.y < obs.y + obs.height &&
        player.y + player.height > obs.y){
-      // Colisión
-      alert(`¡Game Over! Puntaje: ${puntaje}`);
-      obstaculos = [];
-      player.y = 300;
-      puntaje = 0;
-      menu.classList.remove('hidden');
-      canvas.classList.add('hidden');
-      return;
+         alert(`¡Game Over! Puntaje: ${puntaje}`);
+         obstaculos = [];
+         player.y = 300;
+         puntaje = 0;
+         gameState = 'menu';
     }
 
-    // Aumentar puntaje
+    // Quitar fuera del canvas y puntuar
     if(obs.x + obs.width < 0){
-      obstaculos.splice(index, 1);
+      obstaculos.splice(index,1);
       puntaje++;
-      localStorage.setItem('nivel', nivel); // guardar progreso
+      misionesCompletadas++;
+      localStorage.setItem('nivel', nivel);
+      localStorage.setItem('personaje', personaje);
     }
   });
 
-  // Mostrar puntaje
+  // Física jugador
+  player.dy += 1; // gravedad
+  player.y += player.dy;
+  if(player.y >= 300){
+    player.y = 300;
+    player.dy = 0;
+    player.saltando = false;
+  }
+
+  // Info
   ctx.fillStyle = 'white';
   ctx.font = '20px Arial';
-  ctx.fillText(`Nivel: ${nivel} Puntaje: ${puntaje}`, 10, 30);
-
-  requestAnimationFrame(gameLoop);
+  ctx.fillText(`Nivel: ${nivel}  Puntaje: ${puntaje}`, 10, 30);
+  ctx.fillText(`Misión diaria: ${misiones[0]}  Completadas: ${misionesCompletadas}`, 10, 60);
 }
+
+// --- Eventos teclado ---
+document.addEventListener('keydown', (e) => {
+  if(gameState === 'menu' && e.code === 'Enter'){
+    gameState = 'seleccion';
+  } else if(gameState === 'seleccion'){
+    if(e.key.toLowerCase() === 'a'){
+      personaje = 'astro';
+      localStorage.setItem('personaje', personaje);
+      gameState = 'jugando';
+    } else if(e.key.toLowerCase() === 'c'){
+      personaje = 'coder';
+      localStorage.setItem('personaje', personaje);
+      gameState = 'jugando';
+    }
+  } else if(gameState === 'jugando'){
+    if(e.code === 'Space' && !player.saltando){
+      player.dy = -15;
+      player.saltando = true;
+    }
+  }
+});
+
+// --- Obstáculos periódicos ---
+setInterval(() => {
+  if(gameState === 'jugando') crearObstaculos();
+}, 2000);
+
+// --- Loop principal ---
+function loop() {
+  if(gameState === 'menu') dibujarMenu();
+  else if(gameState === 'seleccion') dibujarSeleccion();
+  else if(gameState === 'jugando') dibujarJuego();
+
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
