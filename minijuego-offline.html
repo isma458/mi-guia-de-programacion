@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minijuego Deluxe Offline</title>
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #222;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  #gameContainer {
+    position: relative;
+    width: 600px;
+    height: 300px;
+    background-color: #333;
+    overflow: hidden;
+    border: 2px solid #fff;
+  }
+
+  #player {
+    width: 50px;
+    height: 50px;
+    background-color: #ff0;
+    position: absolute;
+    bottom: 0;
+    left: 50px;
+  }
+
+  .obstacle {
+    width: 30px;
+    height: 30px;
+    background-color: #f00;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+  }
+
+  #score, #lives {
+    margin-top: 10px;
+    font-size: 20px;
+  }
+</style>
+</head>
+<body>
+<h1>No hay conexión. ¡Juega mientras tanto! 🎮</h1>
+
+<div id="gameContainer">
+  <div id="player"></div>
+</div>
+<div id="score">Puntos: 0</div>
+<div id="lives">Vidas: 3</div>
+
+<script>
+  const player = document.getElementById('player');
+  const gameContainer = document.getElementById('gameContainer');
+  const scoreElem = document.getElementById('score');
+  const livesElem = document.getElementById('lives');
+
+  let score = 0;
+  let lives = 3;
+  let isJumping = false;
+  let isDucking = false;
+  const obstacles = [];
+  const obstacleSpeed = 5;
+
+  // Crear obstáculos periódicamente
+  function createObstacle() {
+    const obs = document.createElement('div');
+    obs.classList.add('obstacle');
+    obs.style.right = '0px';
+    obs.style.width = Math.random() > 0.5 ? '30px' : '50px'; // Tamaño variable
+    gameContainer.appendChild(obs);
+    obstacles.push(obs);
+  }
+
+  setInterval(createObstacle, 2000); // cada 2 segundos
+
+  // Saltar
+  function jump() {
+    if (isJumping || isDucking) return;
+    isJumping = true;
+    let jumpHeight = 0;
+    let up = setInterval(() => {
+      if (jumpHeight >= 120) {
+        clearInterval(up);
+        let down = setInterval(() => {
+          if (jumpHeight <= 0) {
+            clearInterval(down);
+            isJumping = false;
+          }
+          jumpHeight -= 5;
+          player.style.bottom = jumpHeight + 'px';
+        }, 20);
+      }
+      jumpHeight += 5;
+      player.style.bottom = jumpHeight + 'px';
+    }, 20);
+  }
+
+  // Agacharse
+  function duck(down) {
+    if (isJumping) return;
+    isDucking = down;
+    player.style.height = down ? '25px' : '50px';
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if(e.code === 'ArrowUp') jump();
+    if(e.code === 'ArrowDown') duck(true);
+  });
+
+  document.addEventListener('keyup', (e) => {
+    if(e.code === 'ArrowDown') duck(false);
+  });
+
+  // Mover obstáculos y detectar colisión
+  function gameLoop() {
+    obstacles.forEach((obs, index) => {
+      let right = parseInt(obs.style.right.replace('px',''));
+      right += obstacleSpeed;
+      obs.style.right = right + 'px';
+
+      // Colisión
+      const playerRect = player.getBoundingClientRect();
+      const obsRect = obs.getBoundingClientRect();
+
+      if (!(playerRect.right < obsRect.left ||
+            playerRect.left > obsRect.right ||
+            playerRect.bottom < obsRect.top ||
+            playerRect.top > obsRect.bottom)) {
+        lives--;
+        livesElem.innerText = 'Vidas: ' + lives;
+        obs.remove();
+        obstacles.splice(index,1);
+        if(lives <= 0) {
+          alert('¡Game Over! Puntuación: ' + score);
+          score = 0;
+          lives = 3;
+        }
+      }
+
+      // Quitar obstáculos fuera del contenedor
+      if (right > 650) {
+        obs.remove();
+        obstacles.splice(index,1);
+        score++;
+        scoreElem.innerText = 'Puntos: ' + score;
+      }
+    });
+    requestAnimationFrame(gameLoop);
+  }
+
+  gameLoop();
+
+  // Música de fondo (opcional, requiere archivo local)
+  /*
+  const music = new Audio('musica.mp3');
+  music.loop = true;
+  music.play();
+  */
+</script>
+</body>
+</html>
