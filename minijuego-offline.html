@@ -3,95 +3,74 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Juego Educativo de Programación</title>
+<title>Juego Educativo - Prototipo</title>
 <style>
   body {
     margin: 0;
     overflow: hidden;
-    background-color: #000;
+    background-color: black;
     font-family: Arial, sans-serif;
-    color: white;
-    text-align: center;
   }
   canvas {
     display: block;
     margin: 0 auto;
-    background: black;
+    background-color: black;
   }
 </style>
 </head>
 <body>
-
 <canvas id="gameCanvas" width="800" height="400"></canvas>
 
 <script>
-// --- Variables principales ---
+// --- Variables ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let gameState = 'menu'; // 'menu', 'seleccion', 'jugando'
-let personaje = localStorage.getItem('personaje') || 'astro';
-let nivel = parseInt(localStorage.getItem('nivel')) || 1;
+let player = { x: 50, y: 300, width: 50, height: 50, dy: 0, saltando: false };
+let obstaculos = [];
+let velocidad = 3; // velocidad inicial
 let puntaje = 0;
 
-// Jugador
-let player = { x: 50, y: 300, width: 50, height: 50, dy: 0, color: 'yellow', saltando: false };
+// --- Eventos ---
+document.addEventListener('keydown', (e) => {
+  if(e.code === 'Space' && !player.saltando){
+    player.dy = -15;
+    player.saltando = true;
+  }
+});
 
-// Obstáculos
-let obstaculos = [];
-let velocidad = 3;
-
-// Misiones diarias (ejemplo simple)
-let misiones = [`Nivel ${nivel}: Salta sobre 5 obstáculos`];
-let misionesCompletadas = 0;
-
-// --- Funciones ---
-function dibujarMenu() {
-  ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  ctx.fillStyle = 'white';
-  ctx.font = '30px Arial';
-  ctx.fillText('Juego Educativo de Programación 🚀', 80, 100);
-  ctx.font = '20px Arial';
-  ctx.fillText('Presiona ENTER para empezar', 230, 200);
-  ctx.fillText(`Personaje actual: ${personaje}`, 280, 250);
-}
-
-function dibujarSeleccion() {
-  ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = 'white';
-  ctx.font = '25px Arial';
-  ctx.fillText('Selecciona tu personaje:', 250, 100);
-  ctx.fillStyle = 'yellow';
-  ctx.fillRect(250, 150, 50, 50);
-  ctx.fillStyle = 'cyan';
-  ctx.fillRect(350, 150, 50, 50);
-  ctx.fillStyle = 'white';
-  ctx.font = '18px Arial';
-  ctx.fillText('Presiona A para Astro (amarillo) o C para Coder (cyan)', 150, 250);
-}
-
+// --- Crear obstáculos periódicamente ---
 function crearObstaculos() {
   obstaculos.push({ x: canvas.width, y: 350, width: 30, height: 50 });
 }
+setInterval(() => crearObstaculos(), 2000);
 
-function dibujarJuego() {
-  // Fondo galaxia simple
+// --- Game Loop ---
+function gameLoop() {
+  // Fondo
   ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  // Estrellas
-  for (let i = 0; i < 50; i++) {
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // Estrellas de fondo
+  for (let i = 0; i < 30; i++) {
     ctx.fillStyle = 'white';
     ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2);
   }
 
-  // Jugador
-  ctx.fillStyle = personaje === 'astro' ? 'yellow' : 'cyan';
+  // Dibujar jugador
+  ctx.fillStyle = 'yellow';
   ctx.fillRect(player.x, player.y, player.width, player.height);
 
-  // Obstáculos
+  // Física del jugador
+  player.dy += 1; // gravedad
+  player.y += player.dy;
+  if(player.y >= 300){
+    player.y = 300;
+    player.dy = 0;
+    player.saltando = false;
+  }
+
+  // Dibujar obstáculos y colisiones
   ctx.fillStyle = 'red';
   obstaculos.forEach((obs, index) => {
     obs.x -= velocidad;
@@ -103,75 +82,31 @@ function dibujarJuego() {
        player.y < obs.y + obs.height &&
        player.y + player.height > obs.y){
          alert(`¡Game Over! Puntaje: ${puntaje}`);
+         // Reiniciar juego
          obstaculos = [];
          player.y = 300;
          puntaje = 0;
-         gameState = 'menu';
+         velocidad = 3; // resetear velocidad
     }
 
-    // Quitar fuera del canvas y puntuar
+    // Si el obstáculo pasa al jugador
     if(obs.x + obs.width < 0){
       obstaculos.splice(index,1);
       puntaje++;
-      misionesCompletadas++;
-      localStorage.setItem('nivel', nivel);
-      localStorage.setItem('personaje', personaje);
+      velocidad += 0.5; // Aumenta velocidad del mapa cada obstáculo evitado
     }
   });
 
-  // Física jugador
-  player.dy += 1; // gravedad
-  player.y += player.dy;
-  if(player.y >= 300){
-    player.y = 300;
-    player.dy = 0;
-    player.saltando = false;
-  }
-
-  // Info
+  // Puntaje
   ctx.fillStyle = 'white';
   ctx.font = '20px Arial';
-  ctx.fillText(`Nivel: ${nivel}  Puntaje: ${puntaje}`, 10, 30);
-  ctx.fillText(`Misión diaria: ${misiones[0]}  Completadas: ${misionesCompletadas}`, 10, 60);
+  ctx.fillText(`Puntaje: ${puntaje}`, 10, 30);
+  ctx.fillText(`Velocidad: ${velocidad.toFixed(1)}`, 10, 60);
+
+  requestAnimationFrame(gameLoop);
 }
 
-// --- Eventos teclado ---
-document.addEventListener('keydown', (e) => {
-  if(gameState === 'menu' && e.code === 'Enter'){
-    gameState = 'seleccion';
-  } else if(gameState === 'seleccion'){
-    if(e.key.toLowerCase() === 'a'){
-      personaje = 'astro';
-      localStorage.setItem('personaje', personaje);
-      gameState = 'jugando';
-    } else if(e.key.toLowerCase() === 'c'){
-      personaje = 'coder';
-      localStorage.setItem('personaje', personaje);
-      gameState = 'jugando';
-    }
-  } else if(gameState === 'jugando'){
-    if(e.code === 'Space' && !player.saltando){
-      player.dy = -15;
-      player.saltando = true;
-    }
-  }
-});
-
-// --- Obstáculos periódicos ---
-setInterval(() => {
-  if(gameState === 'jugando') crearObstaculos();
-}, 2000);
-
-// --- Loop principal ---
-function loop() {
-  if(gameState === 'menu') dibujarMenu();
-  else if(gameState === 'seleccion') dibujarSeleccion();
-  else if(gameState === 'jugando') dibujarJuego();
-
-  requestAnimationFrame(loop);
-}
-
-loop();
+gameLoop();
 </script>
 </body>
 </html>
